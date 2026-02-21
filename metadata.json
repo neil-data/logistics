@@ -1,0 +1,5 @@
+{
+  "name": "FleetFlow",
+  "description": "A modular fleet and logistics management system for tracking vehicles, drivers, trips, and financial performance.",
+  "requestFramePermissions": []
+}
