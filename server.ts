@@ -323,7 +323,7 @@ async function startServer() {
     
     // Update status
     db.prepare("UPDATE vehicles SET status = 'On Trip' WHERE id = ?").run(vehicle_id);
-    db.prepare("UPDATE drivers SET status = 'Status' WHERE id = ?").run(driver_id);
+    db.prepare("UPDATE drivers SET status = 'On Duty' WHERE id = ?").run(driver_id);
 
     res.json({ id: result.lastInsertRowid });
   });

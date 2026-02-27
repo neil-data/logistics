@@ -5,6 +5,7 @@ import {defineConfig, loadEnv} from 'vite';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
+  const apiTarget = env.VITE_API_TARGET || 'http://localhost:3000';
   return {
     plugins: [react(), tailwindcss()],
     define: {
@@ -21,7 +22,7 @@ export default defineConfig(({mode}) => {
       hmr: process.env.DISABLE_HMR !== 'true',
       proxy: {
         '/api': {
-          target: 'http://localhost:5005',
+          target: apiTarget,
           changeOrigin: true,
           secure: false,
         },

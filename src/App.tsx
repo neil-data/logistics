@@ -871,6 +871,8 @@ const Dashboard = ({ setActiveTab }: { setActiveTab: (t: string) => void }) => {
 const VehicleRegistry = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     license_plate: '',
     max_load: '',
@@ -881,7 +883,10 @@ const VehicleRegistry = () => {
   });
 
   const fetchVehicles = () => {
-    fetch('/api/vehicles').then(res => res.json()).then(setVehicles);
+    fetch('/api/vehicles')
+      .then(res => res.json())
+      .then(setVehicles)
+      .catch(() => setError('Failed to load vehicles. Please refresh.'));
   };
 
   useEffect(() => {
@@ -890,19 +895,32 @@ const VehicleRegistry = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('/api/vehicles', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...formData,
-        max_load: parseInt(formData.max_load),
-        odometer: parseInt(formData.odometer)
-      })
-    });
-    if (res.ok) {
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch('/api/vehicles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          max_load: Number(formData.max_load),
+          odometer: Number(formData.odometer)
+        })
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Failed to register vehicle');
+      }
+
       setIsModalOpen(false);
       setFormData({ license_plate: '', max_load: '', odometer: '', type: 'Truck', name: '', region: 'North' });
       fetchVehicles();
+    } catch (submitError: any) {
+      setError(submitError?.message || 'Failed to register vehicle');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -941,6 +959,11 @@ const VehicleRegistry = () => {
           >
             <h3 className="text-xl font-bold mb-4 text-slate-900">Add New Vehicle</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Model Name</label>
@@ -1024,9 +1047,10 @@ const VehicleRegistry = () => {
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition-all shadow-md"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition-all shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Register
+                  {isSubmitting ? 'Registering...' : 'Register'}
                 </button>
               </div>
             </form>
