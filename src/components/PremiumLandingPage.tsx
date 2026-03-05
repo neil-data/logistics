@@ -175,6 +175,7 @@ const PremiumLandingPage: React.FC<PremiumLandingPageProps> = ({ onGetStarted })
                 Start Free Trial <ChevronRight className="w-5 h-5" />
               </button>
               <button 
+                onClick={() => alert("Demo video coming soon!")}
                 className="w-full sm:w-auto px-8 py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl font-bold text-lg backdrop-blur-md transition-all flex items-center justify-center gap-2 group"
               >
                 <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center">
@@ -267,6 +268,10 @@ const PremiumLandingPage: React.FC<PremiumLandingPageProps> = ({ onGetStarted })
                 {features.map((feature, idx) => (
                     <motion.div
                         key={idx}
+                        onClick={() => {
+                          const el = document.getElementById('solutions');
+                          el?.scrollIntoView({ behavior: 'smooth' });
+                        }}
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}

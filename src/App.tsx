@@ -495,7 +495,11 @@ const Login = ({ onLogin, initialMode = 'login' }: { onLogin: (user: User) => vo
           
           {!isRegistering && (
             <div className="text-center mt-4">
-              <button type="button" className="text-sm text-orange-600 hover:text-orange-700 font-medium transition-colors">
+              <button 
+                type="button" 
+                onClick={() => alert("Please contact support to reset your password.")}
+                className="text-sm text-orange-600 hover:text-orange-700 font-medium transition-colors"
+               >
                 Forgot Password?
               </button>
             </div>
@@ -589,7 +593,10 @@ const Header = ({ title, user }: { title: string, user: User }) => (
           className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-full text-sm text-slate-700 focus:ring-2 focus:ring-blue-900 w-64 outline-none"
         />
       </div>
-      <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-full relative">
+      <button 
+        onClick={() => alert("No new notifications")}
+        className="p-2 text-slate-500 hover:bg-slate-100 rounded-full relative"
+      >
         <Bell className="w-5 h-5" />
         <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full border-2 border-white"></span>
       </button>
@@ -1091,7 +1098,12 @@ const VehicleRegistry = () => {
                   <td className="px-6 py-4 text-sm text-slate-600">{v.max_load.toLocaleString()} kg</td>
                   <td className="px-6 py-4">{getStatusBadge(v.status)}</td>
                   <td className="px-6 py-4 text-right">
-                    <button className="text-slate-400 hover:text-blue-900 font-bold text-sm transition-colors">Edit</button>
+                    <button 
+                      onClick={() => alert("Edit vehicle functionality coming soon.")}
+                      className="text-slate-400 hover:text-blue-900 font-bold text-sm transition-colors"
+                    >
+                      Edit
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -1564,7 +1576,7 @@ const TripExpenses = () => {
           className="bg-blue-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-800 transition-all shadow-md"
         >
           <Plus className="w-4 h-4" />
-          New Expense Bar
+          Log New Expense
         </button>
       </div>
 
