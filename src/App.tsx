@@ -1960,7 +1960,7 @@ const UserManagement = () => {
     fetchUsers();
   }, []);
 
-  const handleRoleChange = async (userId: string, newRole: string) => {
+  const handleRoleChange = async (userId: string | number, newRole: string) => {
     const res = await fetch(`/api/users/${userId}/role`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
