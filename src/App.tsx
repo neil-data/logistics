@@ -60,6 +60,10 @@ const vehicleTypeData = [
   { name: 'Bikes', value: 18 },
 ];
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+const fetchApi = (path: string, init?: RequestInit) =>
+  fetch(`${API_BASE_URL}${path}`, init);
+
 // --- Components ---
 
 const LandingPage = ({ onGetStarted }: { onGetStarted: (mode: 'login' | 'register') => void }) => {
@@ -625,8 +629,8 @@ const Dashboard = ({ setActiveTab }: { setActiveTab: (t: string) => void }) => {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      fetch('/api/dashboard/stats').then(res => res.json()),
-      fetch('/api/vehicles').then(res => res.json())
+      fetchApi('/api/dashboard/stats').then(res => res.json()),
+      fetchApi('/api/vehicles').then(res => res.json())
     ]).then(([statsData, vehiclesData]) => {
       setStats(statsData);
       setVehicles(vehiclesData);
@@ -878,6 +882,7 @@ const Dashboard = ({ setActiveTab }: { setActiveTab: (t: string) => void }) => {
 const VehicleRegistry = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingVehicleId, setEditingVehicleId] = useState<string | number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -890,7 +895,7 @@ const VehicleRegistry = () => {
   });
 
   const fetchVehicles = () => {
-    fetch('/api/vehicles')
+    fetchApi('/api/vehicles')
       .then(res => res.json())
       .then(setVehicles)
       .catch(() => setError('Failed to load vehicles. Please refresh.'));
@@ -906,8 +911,10 @@ const VehicleRegistry = () => {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('/api/vehicles', {
-        method: 'POST',
+      const isEditing = editingVehicleId !== null;
+      const endpoint = isEditing ? `/api/vehicles/${editingVehicleId}` : '/api/vehicles';
+      const res = await fetchApi(endpoint, {
+        method: isEditing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
@@ -922,6 +929,7 @@ const VehicleRegistry = () => {
       }
 
       setIsModalOpen(false);
+      setEditingVehicleId(null);
       setFormData({ licensePlate: '', maxCapacity: '', odometer: '', type: 'Truck', name: '', region: 'North' });
       fetchVehicles();
     } catch (submitError: any) {
@@ -929,6 +937,27 @@ const VehicleRegistry = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEditVehicle = (vehicle: Vehicle) => {
+    setError('');
+    setEditingVehicleId(vehicle.id);
+    setFormData({
+      licensePlate: vehicle.licensePlate,
+      maxCapacity: String(vehicle.maxCapacity),
+      odometer: String(vehicle.odometer),
+      type: vehicle.type,
+      name: vehicle.name,
+      region: vehicle.region || 'North',
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingVehicleId(null);
+    setError('');
+    setFormData({ licensePlate: '', maxCapacity: '', odometer: '', type: 'Truck', name: '', region: 'North' });
   };
 
   const getStatusBadge = (status: string) => {
@@ -964,7 +993,7 @@ const VehicleRegistry = () => {
             animate={{ scale: 1, opacity: 1 }}
             className="bg-white border border-slate-200 rounded-2xl p-8 max-w-md w-full shadow-2xl"
           >
-            <h3 className="text-xl font-bold mb-4 text-slate-900">Add New Vehicle</h3>
+            <h3 className="text-xl font-bold mb-4 text-slate-900">{editingVehicleId ? 'Edit Vehicle' : 'Add New Vehicle'}</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -1047,7 +1076,7 @@ const VehicleRegistry = () => {
               <div className="flex gap-3 pt-4">
                 <button 
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={handleCloseModal}
                   className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-all"
                 >
                   Cancel
@@ -1057,7 +1086,7 @@ const VehicleRegistry = () => {
                   disabled={isSubmitting}
                   className="flex-1 px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition-all shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? 'Registering...' : 'Register'}
+                  {isSubmitting ? (editingVehicleId ? 'Saving...' : 'Registering...') : (editingVehicleId ? 'Save' : 'Register')}
                 </button>
               </div>
             </form>
@@ -1099,7 +1128,7 @@ const VehicleRegistry = () => {
                   <td className="px-6 py-4">{getStatusBadge(v.status)}</td>
                   <td className="px-6 py-4 text-right">
                     <button 
-                      onClick={() => alert("Edit vehicle functionality coming soon.")}
+                      onClick={() => handleEditVehicle(v)}
                       className="text-slate-400 hover:text-blue-900 font-bold text-sm transition-colors"
                     >
                       Edit
@@ -1131,9 +1160,9 @@ const TripDispatcher = () => {
   const [error, setError] = useState('');
 
   const fetchData = () => {
-    fetch('/api/trips').then(res => res.json()).then(setTrips);
-    fetch('/api/vehicles').then(res => res.json()).then((v: Vehicle[]) => setVehicles(v.filter(x => x.status === 'AVAILABLE')));
-    fetch('/api/drivers').then(res => res.json()).then((d: Driver[]) => setDrivers(d.filter(x => ['ON_DUTY', 'OFF_DUTY'].includes(x.status))));
+    fetchApi('/api/trips').then(res => res.json()).then(setTrips);
+    fetchApi('/api/vehicles').then(res => res.json()).then((v: Vehicle[]) => setVehicles(v.filter(x => x.status === 'AVAILABLE')));
+    fetchApi('/api/drivers').then(res => res.json()).then((d: Driver[]) => setDrivers(d.filter(x => ['ON_DUTY', 'OFF_DUTY'].includes(x.status))));
   };
 
   useEffect(() => {
@@ -1149,7 +1178,7 @@ const TripDispatcher = () => {
     const fuelCost = parseFloat(formData.estimatedFuelCost);
     const estimatedRevenue = Math.round((cargoWeight * 12) + (fuelCost * 1.3));
 
-    const res = await fetch('/api/trips', {
+    const res = await fetchApi('/api/trips', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1179,7 +1208,7 @@ const TripDispatcher = () => {
     if (endOdoStr === null) return;
     const endOdo = parseFloat(endOdoStr);
 
-    const res = await fetch(`/api/trips/${id}/complete`, { 
+    const res = await fetchApi(`/api/trips/${id}/complete`, { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ endOdo })
@@ -1400,8 +1429,8 @@ const Maintenance = () => {
   const [formData, setFormData] = useState({ vehicleId: '', description: '', date: '' });
 
   const fetchData = () => {
-    fetch('/api/maintenance').then(res => res.json()).then(setLogs);
-    fetch('/api/vehicles').then(res => res.json()).then(setVehicles);
+    fetchApi('/api/maintenance').then(res => res.json()).then(setLogs);
+    fetchApi('/api/vehicles').then(res => res.json()).then(setVehicles);
   };
 
   useEffect(() => {
@@ -1410,7 +1439,7 @@ const Maintenance = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('/api/maintenance', {
+    const res = await fetchApi('/api/maintenance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData)
@@ -1425,7 +1454,7 @@ const Maintenance = () => {
   const handleCompleteTask = async (id: number) => {
     if(!confirm("Mark this service as completed? This will verify the vehicle is ready for work.")) return;
 
-    const res = await fetch(`/api/maintenance/${id}/complete`, { method: 'POST' });
+    const res = await fetchApi(`/api/maintenance/${id}/complete`, { method: 'POST' });
     if(res.ok) {
         fetchData();
     }
@@ -1547,8 +1576,8 @@ const TripExpenses = () => {
   const [formData, setFormData] = useState({ trip_id: '', driver_name: '', fuel_cost: '', misc_expense: '' });
 
   const fetchData = () => {
-    fetch('/api/expenses').then(res => res.json()).then(setExpenses);
-    fetch('/api/trips').then(res => res.json()).then(setTrips);
+    fetchApi('/api/expenses').then(res => res.json()).then(setExpenses);
+    fetchApi('/api/trips').then(res => res.json()).then(setTrips);
   };
 
   useEffect(() => {
@@ -1557,7 +1586,7 @@ const TripExpenses = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('/api/expenses', {
+    const res = await fetchApi('/api/expenses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1701,7 +1730,7 @@ const Performance = () => {
   });
 
   const fetchDrivers = () => {
-    fetch('/api/drivers').then(res => res.json()).then(setDrivers);
+    fetchApi('/api/drivers').then(res => res.json()).then(setDrivers);
   };
 
   useEffect(() => {
@@ -1710,7 +1739,7 @@ const Performance = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('/api/drivers', {
+    const res = await fetchApi('/api/drivers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData)
@@ -1835,8 +1864,8 @@ const Analytics = () => {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      fetch('/api/analytics/summary').then(res => res.json()),
-      fetch('/api/dashboard/stats').then(res => res.json())
+      fetchApi('/api/analytics/summary').then(res => res.json()),
+      fetchApi('/api/dashboard/stats').then(res => res.json())
     ]).then(([summaryData, statsData]) => {
       setSummary(summaryData);
       setStats(statsData);
@@ -1968,7 +1997,7 @@ const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
 
   const fetchUsers = () => {
-    fetch('/api/users').then(res => res.json()).then(setUsers);
+    fetchApi('/api/users').then(res => res.json()).then(setUsers);
   };
 
   useEffect(() => {
@@ -1976,7 +2005,7 @@ const UserManagement = () => {
   }, []);
 
   const handleRoleChange = async (userId: string | number, newRole: string) => {
-    const res = await fetch(`/api/users/${userId}/role`, {
+    const res = await fetchApi(`/api/users/${userId}/role`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: newRole })
@@ -2069,7 +2098,7 @@ export default function App() {
 
           // Sync user with backend
           try {
-            await fetch('/api/users/sync', {
+            await fetchApi('/api/users/sync', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(userData)

@@ -258,15 +258,57 @@ async function startServer() {
   });
 
   app.get("/api/vehicles", (req, res) => {
-    const vehicles = db.prepare("SELECT * FROM vehicles").all();
-    res.json(vehicles);
+    const vehicles = db.prepare("SELECT * FROM vehicles").all() as any[];
+    res.json(
+      vehicles.map((v) => ({
+        id: v.id,
+        name: v.name,
+        licensePlate: v.license_plate,
+        type: v.type,
+        maxCapacity: v.max_load,
+        odometer: v.odometer,
+        status:
+          v.status === 'Available'
+            ? 'AVAILABLE'
+            : v.status === 'On Trip'
+              ? 'ON_TRIP'
+              : v.status === 'In Shop'
+                ? 'IN_SHOP'
+                : v.status === 'Out of Service'
+                  ? 'RETIRED'
+                  : v.status,
+        region: v.region,
+      }))
+    );
   });
 
   app.post("/api/vehicles", (req, res) => {
-    const { name, license_plate, type, max_load, odometer, region } = req.body;
+    const {
+      name,
+      licensePlate,
+      maxCapacity,
+      type,
+      odometer,
+      region,
+      license_plate,
+      max_load
+    } = req.body;
+
+    const normalizedLicensePlate = licensePlate ?? license_plate;
+    const normalizedMaxLoad = maxCapacity ?? max_load;
+
+    if (!name || !normalizedLicensePlate || normalizedMaxLoad === undefined || normalizedMaxLoad === null) {
+      return res.status(400).json({ error: 'name, licensePlate, and maxCapacity are required' });
+    }
+
     try {
       const result = db.prepare("INSERT INTO vehicles (name, license_plate, type, max_load, odometer, region) VALUES (?, ?, ?, ?, ?, ?)").run(
-        name, license_plate, type, max_load, odometer, region
+        name,
+        normalizedLicensePlate,
+        type || 'Truck',
+        Number(normalizedMaxLoad),
+        Number(odometer || 0),
+        region || null
       );
       res.json({ id: result.lastInsertRowid });
     } catch (e: any) {
@@ -274,16 +316,104 @@ async function startServer() {
     }
   });
 
+  app.put("/api/vehicles/:id", (req, res) => {
+    const { id } = req.params;
+    const {
+      name,
+      licensePlate,
+      maxCapacity,
+      type,
+      odometer,
+      region,
+      license_plate,
+      max_load,
+      status
+    } = req.body;
+
+    const normalizedLicensePlate = licensePlate ?? license_plate;
+    const normalizedMaxLoad = maxCapacity ?? max_load;
+
+    if (!name || !normalizedLicensePlate || normalizedMaxLoad === undefined || normalizedMaxLoad === null) {
+      return res.status(400).json({ error: 'name, licensePlate, and maxCapacity are required' });
+    }
+
+    const dbStatus =
+      status === 'AVAILABLE'
+        ? 'Available'
+        : status === 'ON_TRIP'
+          ? 'On Trip'
+          : status === 'IN_SHOP'
+            ? 'In Shop'
+            : status === 'RETIRED'
+              ? 'Out of Service'
+              : status;
+
+    try {
+      const result = db.prepare(
+        "UPDATE vehicles SET name = ?, license_plate = ?, type = ?, max_load = ?, odometer = ?, region = ?, status = COALESCE(?, status) WHERE id = ?"
+      ).run(
+        name,
+        normalizedLicensePlate,
+        type || 'Truck',
+        Number(normalizedMaxLoad),
+        Number(odometer || 0),
+        region || null,
+        dbStatus || null,
+        id
+      );
+
+      if (result.changes === 0) {
+        return res.status(404).json({ error: 'Vehicle not found' });
+      }
+
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
   app.get("/api/drivers", (req, res) => {
-    const drivers = db.prepare("SELECT * FROM drivers").all();
-    res.json(drivers);
+    const drivers = db.prepare("SELECT * FROM drivers").all() as any[];
+    res.json(
+      drivers.map((d) => ({
+        id: d.id,
+        name: d.name,
+        licenseType: d.license_number,
+        licenseExpiry: d.license_expiry,
+        status:
+          d.status === 'On Duty'
+            ? 'ON_DUTY'
+            : d.status === 'Off Duty'
+              ? 'OFF_DUTY'
+              : d.status === 'Suspended'
+                ? 'SUSPENDED'
+                : d.status,
+        safetyScore: d.safety_score,
+      }))
+    );
   });
 
   app.post("/api/drivers", (req, res) => {
-    const { name, license_number, license_expiry, safety_score } = req.body;
+    const {
+      name,
+      licenseType,
+      licenseExpiry,
+      safetyScore,
+      license_number,
+      license_expiry,
+      safety_score
+    } = req.body;
+
+    const normalizedLicenseNumber = licenseType ?? license_number;
+    const normalizedLicenseExpiry = licenseExpiry ?? license_expiry;
+    const normalizedSafetyScore = safetyScore ?? safety_score ?? 100;
+
     try {
       const result = db.prepare("INSERT INTO drivers (name, license_number, license_expiry, safety_score) VALUES (?, ?, ?, ?)").run(
-        name, license_number, license_expiry, safety_score || 100
+        name,
+        normalizedLicenseNumber,
+        normalizedLicenseExpiry,
+        normalizedSafetyScore
       );
       res.json({ id: result.lastInsertRowid });
     } catch (e: any) {
@@ -298,32 +428,80 @@ async function startServer() {
       LEFT JOIN vehicles ON trips.vehicle_id = vehicles.id
       LEFT JOIN drivers ON trips.driver_id = drivers.id
       ORDER BY trips.created_at DESC
-    `).all();
-    res.json(trips);
+    `).all() as any[];
+
+    res.json(
+      trips.map((t) => ({
+        id: t.id,
+        vehicleId: t.vehicle_id,
+        driverId: t.driver_id,
+        cargoWeight: t.cargo_weight,
+        status:
+          t.status === 'Dispatched'
+            ? 'DISPATCHED'
+            : t.status === 'Completed'
+              ? 'COMPLETED'
+              : t.status === 'Cancelled'
+                ? 'CANCELLED'
+                : t.status === 'Draft'
+                  ? 'DRAFT'
+                  : t.status,
+        origin: t.origin,
+        destination: t.destination,
+        estimatedFuelCost: t.estimated_fuel_cost,
+        revenue: t.revenue,
+        createdAt: t.created_at,
+        vehicle: t.vehicle_name ? { name: t.vehicle_name } : null,
+        driver: t.driver_name ? { name: t.driver_name } : null,
+      }))
+    );
   });
 
   app.post("/api/trips", (req, res) => {
-    const { vehicle_id, driver_id, cargo_weight, origin, destination, estimated_fuel_cost, revenue } = req.body;
+    const {
+      vehicleId,
+      driverId,
+      cargoWeight,
+      estimatedFuelCost,
+      origin,
+      destination,
+      revenue,
+      vehicle_id,
+      driver_id,
+      cargo_weight,
+      estimated_fuel_cost
+    } = req.body;
+
+    const normalizedVehicleId = Number(vehicleId ?? vehicle_id);
+    const normalizedDriverId = Number(driverId ?? driver_id);
+    const normalizedCargoWeight = Number(cargoWeight ?? cargo_weight);
+    const normalizedEstimatedFuelCost = Number(estimatedFuelCost ?? estimated_fuel_cost ?? 0);
     
     // Validation Rule: Prevent trip creation if CargoWeight > MaxCapacity
-    const vehicle = db.prepare("SELECT max_load FROM vehicles WHERE id = ?").get(vehicle_id) as { max_load: number };
-    if (cargo_weight > vehicle.max_load) {
+    const vehicle = db.prepare("SELECT max_load FROM vehicles WHERE id = ?").get(normalizedVehicleId) as { max_load: number };
+    if (normalizedCargoWeight > vehicle.max_load) {
       return res.status(400).json({ error: "Cargo weight exceeds vehicle capacity" });
     }
 
     // Check driver license
-    const driver = db.prepare("SELECT license_expiry FROM drivers WHERE id = ?").get(driver_id) as { license_expiry: string };
+    const driver = db.prepare("SELECT license_expiry FROM drivers WHERE id = ?").get(normalizedDriverId) as { license_expiry: string };
     if (new Date(driver.license_expiry) < new Date()) {
       return res.status(400).json({ error: "Driver license has expired" });
     }
 
     const result = db.prepare("INSERT INTO trips (vehicle_id, driver_id, cargo_weight, origin, destination, estimated_fuel_cost, revenue, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'Dispatched')").run(
-      vehicle_id, driver_id, cargo_weight, origin, destination, estimated_fuel_cost, revenue || 0
+      normalizedVehicleId,
+      normalizedDriverId,
+      normalizedCargoWeight,
+      origin,
+      destination,
+      normalizedEstimatedFuelCost,
+      revenue || 0
     );
     
     // Update status
-    db.prepare("UPDATE vehicles SET status = 'On Trip' WHERE id = ?").run(vehicle_id);
-    db.prepare("UPDATE drivers SET status = 'On Duty' WHERE id = ?").run(driver_id);
+    db.prepare("UPDATE vehicles SET status = 'On Trip' WHERE id = ?").run(normalizedVehicleId);
+    db.prepare("UPDATE drivers SET status = 'On Duty' WHERE id = ?").run(normalizedDriverId);
 
     res.json({ id: result.lastInsertRowid });
   });
@@ -356,14 +534,24 @@ async function startServer() {
       FROM maintenance_logs 
       JOIN vehicles ON maintenance_logs.vehicle_id = vehicles.id
       ORDER BY date DESC
-    `).all();
-    res.json(logs);
+    `).all() as any[];
+    res.json(
+      logs.map((log) => ({
+        id: log.id,
+        vehicleId: log.vehicle_id,
+        description: log.description,
+        date: log.date,
+        status: log.status,
+        vehicle: log.vehicle_name ? { name: log.vehicle_name } : null,
+      }))
+    );
   });
 
   app.post("/api/maintenance", (req, res) => {
-    const { vehicle_id, description, date } = req.body;
-    const result = db.prepare("INSERT INTO maintenance_logs (vehicle_id, description, date, status) VALUES (?, ?, ?, 'Pending')").run(vehicle_id, description, date);
-    db.prepare("UPDATE vehicles SET status = 'In Shop' WHERE id = ?").run(vehicle_id);
+    const { vehicleId, description, date, vehicle_id } = req.body;
+    const normalizedVehicleId = Number(vehicleId ?? vehicle_id);
+    const result = db.prepare("INSERT INTO maintenance_logs (vehicle_id, description, date, status) VALUES (?, ?, ?, 'Pending')").run(normalizedVehicleId, description, date);
+    db.prepare("UPDATE vehicles SET status = 'In Shop' WHERE id = ?").run(normalizedVehicleId);
     res.json({ id: result.lastInsertRowid });
   });
 

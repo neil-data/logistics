@@ -13,6 +13,14 @@ A comprehensive fleet management dashboard for the Indian logistics sector.
 
 ## Production Setup
 
+### Vercel Note
+
+If you deploy the frontend to Vercel, you must set:
+
+- `VITE_API_BASE_URL` = your deployed backend URL (for example, your Express API host)
+
+Without this, frontend requests to `/api/*` will not reach your backend in production and dashboards may show zero/empty data.
+
 1.  **Install Dependencies**:
 
     ```bash
