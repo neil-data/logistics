@@ -20,7 +20,7 @@ const createTrip = async (data) => {
   // 2. Validate Driver
   const driver = await prisma.driver.findUnique({ where: { id: driverId } });
   if (!driver) throw new Error("Driver not found");
-  if (driver.status !== 'ON_DUTY') throw new Error("Driver is not ON_DUTY");
+  if (!['ON_DUTY', 'OFF_DUTY'].includes(driver.status)) throw new Error("Driver is not available (Must be ON_DUTY or OFF_DUTY)");
   if (new Date(driver.licenseExpiry) < new Date()) throw new Error("Driver license expired");
 
   // 3. Create Trip & Update Statuses

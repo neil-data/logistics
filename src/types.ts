@@ -1,37 +1,37 @@
 export interface Vehicle {
-  id: number;
+  id: string; // Changed to string for UUID
   name: string;
-  license_plate: string;
-  type: 'Truck' | 'Van' | 'Bike';
-  max_load: number;
+  licensePlate: string;
+  type: string;
+  maxCapacity: number;
   odometer: number;
-  status: 'Available' | 'In Shop' | 'On Trip' | 'Out of Service';
-  region: string;
+  status: string;
+  region?: string;
 }
 
 export interface Driver {
-  id: number;
+  id: string; // Changed to string for UUID
   name: string;
-  license_number: string;
-  license_expiry: string;
-  status: 'On Duty' | 'Off Duty' | 'Suspended';
-  safety_score: number;
-  completion_rate?: number;
-  complaints?: number;
+  licenseType: string;
+  licenseExpiry: string;
+  status: string; // Enum from backend
+  safetyScore: number;
+  createdAt?: string;
 }
 
 export interface Trip {
-  id: number;
-  vehicle_id: number;
-  driver_id: number;
-  vehicle_name?: string;
-  driver_name?: string;
-  cargo_weight: number;
-  status: 'Draft' | 'Dispatched' | 'Completed' | 'Cancelled';
+  id: string; // Changed to string for UUID
+  vehicleId: string;
+  driverId: string;
+  vehicleName?: string; // Optional if joined
+  driverName?: string; // Optional if joined
+  cargoWeight: number;
+  status: string; // Enum from backend
   origin: string;
   destination: string;
-  estimated_fuel_cost?: number;
-  created_at: string;
+  estimatedFuelCost: number;
+  revenue: number;
+  createdAt: string;
 }
 
 export interface MaintenanceRecord {

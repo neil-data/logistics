@@ -6,6 +6,7 @@ const { z } = require('zod');
 const createVehicleSchema = z.object({
   name: z.string().min(1),
   licensePlate: z.string().min(1),
+  type: z.string().optional(),
   maxCapacity: z.number().positive(),
   odometer: z.number().nonnegative().optional(),
   acquisitionCost: z.number().nonnegative().optional(),

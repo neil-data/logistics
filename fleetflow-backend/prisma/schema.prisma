@@ -29,6 +29,7 @@ model Vehicle {
   licensePlate    String        @unique
   maxCapacity     Float
   odometer        Float         @default(0)
+  type            String        @default("Truck")
   acquisitionCost Float?
   status          String        @default("AVAILABLE") // Enum: AVAILABLE, ON_TRIP, IN_SHOP, RETIRED
   region          String?
